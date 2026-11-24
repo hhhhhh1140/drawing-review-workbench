@@ -1,5 +1,31 @@
-// Compatibility polyfills for PDF.js v5.x in browsers without ES2025/ES2026 Stage-3 built-ins
-// (e.g., Safari < 26, Chrome < 145, Edge, Arc, Firefox < 134).
+// Compatibility polyfills for PDF.js v5.x in Safari/WebKit and non-bleeding-edge browsers.
+if (typeof ReadableStream !== 'undefined' && typeof ReadableStream.prototype[Symbol.asyncIterator] !== 'function') {
+  ReadableStream.prototype.values ??= function ({ preventCancel = false } = {}) {
+    const reader = this.getReader();
+    return {
+      async next() {
+        try {
+          const res = await reader.read();
+          if (res.done) reader.releaseLock();
+          return res;
+        } catch (err) {
+          reader.releaseLock();
+          throw err;
+        }
+      },
+      async return(value) {
+        try {
+          if (!preventCancel) await reader.cancel(value);
+        } finally {
+          reader.releaseLock();
+        }
+        return { value, done: true };
+      },
+      [Symbol.asyncIterator]() { return this; }
+    };
+  };
+  ReadableStream.prototype[Symbol.asyncIterator] = ReadableStream.prototype.values;
+}
 if (typeof Promise.withResolvers !== 'function') {
   Promise.withResolvers = function () {
     let resolve, reject;
@@ -61,6 +87,59 @@ if (typeof Uint8Array !== 'undefined') {
       return out;
     };
   }
+  if (typeof Uint8Array.prototype.toBase64 !== 'function') {
+    Uint8Array.prototype.toBase64 = function () {
+      let bin = '';
+      const chunk = 0x8000;
+      for (let i = 0; i < this.length; i += chunk) {
+        bin += String.fromCharCode(...this.subarray(i, i + chunk));
+      }
+      return btoa(bin);
+    };
+  }
+  if (typeof Uint8Array.fromBase64 !== 'function') {
+    Uint8Array.fromBase64 = function (b64) {
+      const bin = atob(String(b64).replace(/\s+/g, ''));
+      const out = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+      return out;
+    };
+  }
+}
+if (typeof Set !== 'undefined') {
+  if (typeof Set.prototype.intersection !== 'function') {
+    Set.prototype.intersection = function (other) {
+      const out = new Set();
+      for (const v of this) if (other.has(v)) out.add(v);
+      return out;
+    };
+  }
+  if (typeof Set.prototype.union !== 'function') {
+    Set.prototype.union = function (other) {
+      const out = new Set(this);
+      for (const v of other) out.add(v);
+      return out;
+    };
+  }
+  if (typeof Set.prototype.difference !== 'function') {
+    Set.prototype.difference = function (other) {
+      const out = new Set();
+      for (const v of this) if (!other.has(v)) out.add(v);
+      return out;
+    };
+  }
+}
+if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.any !== 'function') {
+  AbortSignal.any = function (signals) {
+    const ctrl = new AbortController();
+    for (const s of signals) {
+      if (s?.aborted) { ctrl.abort(s.reason); return ctrl.signal; }
+    }
+    for (const s of signals) {
+      s?.addEventListener('abort', () => ctrl.abort(s.reason), { once: true });
+    }
+    return ctrl.signal;
+  };
 }
 if (typeof URL !== 'undefined' && typeof URL.parse !== 'function') {
   URL.parse = function (url, base) {

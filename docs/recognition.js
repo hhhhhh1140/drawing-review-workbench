@@ -1,11 +1,11 @@
 // Source boxes use page-relative coordinates [left, top, width, height], measured from the top left.
-import './vendor/pdf-polyfills.mjs';
+import './vendor/pdf-polyfills.mjs?v=20261124c';
 const asset = path => new URL('vendor/' + path, document.baseURI).href;
 let pdfjs;
 
 export async function openPDF(bytes) {
   pdfjs ??= await import('./vendor/pdf.min.mjs');
-  pdfjs.GlobalWorkerOptions.workerSrc = asset('pdf.worker.shim.mjs');
+  pdfjs.GlobalWorkerOptions.workerSrc = asset('pdf.worker.shim.mjs?v=20261124c');
   return pdfjs.getDocument({
     data: bytes, cMapUrl: asset('cmaps/'), cMapPacked: true,
     standardFontDataUrl: asset('standard_fonts/'), wasmUrl: asset('wasm/'), isEvalSupported: false
