@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 620" width="1200" height="620" role="img" aria-label="图纸识别引擎精度评测与无真值校核体系可视化图">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f7f8f4"/>
+      <stop offset="100%" stop-color="#edf0e7"/>
+    </linearGradient>
+    <linearGradient id="barNew" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#356844"/>
+      <stop offset="100%" stop-color="#689f38"/>
+    </linearGradient>
+    <style>
+      .f { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1200" height="620" rx="16" fill="url(#bg)" stroke="#d6dcd4" stroke-width="2"/>
+
+  <!-- Header -->
+  <rect x="24" y="22" width="1152" height="74" rx="12" fill="#1c292a"/>
+  <rect x="44" y="40" width="108" height="24" rx="12" fill="#d0ef92"/>
+  <text x="98" y="56" text-anchor="middle" class="mono" font-size="12" font-weight="700" fill="#1c292a">BENCHMARK</text>
+  <text x="168" y="56" class="f" font-size="20" font-weight="700" fill="#f7f9f5">复杂 A1 工程图全尺寸基准评测对比（139 项精标真值 + 42 项综合样图）</text>
+  <text x="168" y="78" class="f" font-size="12.5" fill="#b9c9bc">自动化评测脚本：node scripts/evaluate.mjs  |  综合法兰座样图 F1 = 100.0%（IoU 100%） · 复杂 A1 工程图 F1 = 97.5%</text>
+
+  <!-- Left Card: Overall Precision / Recall / F1 + Telemetry -->
+  <g transform="translate(24, 114)">
+    <rect width="564" height="366" rx="12" fill="#ffffff" stroke="#cfd8cf" stroke-width="1.5"/>
+    <text x="24" y="34" class="f" font-size="16" font-weight="700" fill="#1c292a">核心评测指标跃迁（Legacy 切片引擎 vs 六阶段矢量混合引擎）</text>
+
+    <!-- Legend -->
+    <rect x="364" y="20" width="12" height="12" rx="3" fill="#cfd6cf"/>
+    <text x="382" y="30" class="f" font-size="12" fill="#63706b">旧版基线</text>
+    <rect x="446" y="20" width="12" height="12" rx="3" fill="url(#barNew)"/>
+    <text x="464" y="30" class="f" font-size="12" font-weight="600" fill="#2c5839">新版引擎</text>
+
+    <!-- Precision -->
+    <text x="24" y="70" class="f" font-size="13.5" font-weight="700" fill="#22302c">准确率 Precision</text>
+    <text x="540" y="70" text-anchor="end" class="mono" font-size="13.5" font-weight="700" fill="#2c5839">3.6% → 97.1%  (+93.5%)</text>
+    <rect x="24" y="80" width="516" height="12" rx="6" fill="#eff2ec"/>
+    <rect x="24" y="80" width="19" height="12" rx="6" fill="#c5cdc6"/>
+    <rect x="24" y="96" width="516" height="16" rx="8" fill="#eff2ec"/>
+    <rect x="24" y="96" width="501" height="16" rx="8" fill="url(#barNew)"/>
+
+    <!-- Recall -->
+    <text x="24" y="142" class="f" font-size="13.5" font-weight="700" fill="#22302c">召回率 Recall</text>
+    <text x="540" y="142" text-anchor="end" class="mono" font-size="13.5" font-weight="700" fill="#2c5839">36.7% → 97.8%  (+61.1%)</text>
+    <rect x="24" y="152" width="516" height="12" rx="6" fill="#eff2ec"/>
+    <rect x="24" y="152" width="189" height="12" rx="6" fill="#c5cdc6"/>
+    <rect x="24" y="168" width="516" height="16" rx="8" fill="#eff2ec"/>
+    <rect x="24" y="168" width="505" height="16" rx="8" fill="url(#barNew)"/>
+
+    <!-- F1 Score -->
+    <text x="24" y="214" class="f" font-size="13.5" font-weight="700" fill="#22302c">综合 F1-Score</text>
+    <text x="540" y="214" text-anchor="end" class="mono" font-size="13.5" font-weight="700" fill="#2c5839">6.6% → 97.5%  (+90.9%)</text>
+    <rect x="24" y="224" width="516" height="12" rx="6" fill="#eff2ec"/>
+    <rect x="24" y="224" width="34" height="12" rx="6" fill="#c5cdc6"/>
+    <rect x="24" y="240" width="516" height="16" rx="8" fill="#eff2ec"/>
+    <rect x="24" y="240" width="503" height="16" rx="8" fill="url(#barNew)"/>
+
+    <!-- 4 Mini KPI Boxes -->
+    <g transform="translate(24, 276)">
+      <rect x="0" y="0" width="121" height="68" rx="8" fill="#f5f7f2" stroke="#e1e6de"/>
+      <text x="12" y="24" class="f" font-size="11.5" fill="#5d6c66">输出条目收敛</text>
+      <text x="12" y="46" class="mono" font-size="14" font-weight="700" fill="#1c292a">1420 → 140</text>
+      <text x="12" y="61" class="f" font-size="10.5" fill="#356844">消除碎片化噪声</text>
+
+      <rect x="132" y="0" width="121" height="68" rx="8" fill="#f5f7f2" stroke="#e1e6de"/>
+      <text x="144" y="24" class="f" font-size="11.5" fill="#5d6c66">完全重复噪声率</text>
+      <text x="144" y="46" class="mono" font-size="14" font-weight="700" fill="#1c292a">47.5% → 0%</text>
+      <text x="144" y="61" class="f" font-size="10.5" fill="#356844">多图层去重归零</text>
+
+      <rect x="264" y="0" width="121" height="68" rx="8" fill="#f5f7f2" stroke="#e1e6de"/>
+      <text x="276" y="24" class="f" font-size="11.5" fill="#5d6c66">图框坐标误检</text>
+      <text x="276" y="46" class="mono" font-size="14" font-weight="700" fill="#1c292a">42+ → 0 处</text>
+      <text x="276" y="61" class="f" font-size="10.5" fill="#356844">边标与△全剥离</text>
+
+      <rect x="396" y="0" width="120" height="68" rx="8" fill="#f5f7f2" stroke="#e1e6de"/>
+      <text x="408" y="24" class="f" font-size="11.5" fill="#5d6c66">单张 A1 耗时</text>
+      <text x="408" y="46" class="mono" font-size="14" font-weight="700" fill="#1c292a">6.67 秒</text>
+      <text x="408" y="61" class="f" font-size="10.5" fill="#356844">纯前端本地解析</text>
+    </g>
+  </g>
+
+  <!-- Right Card: Per-Category Recall Breakdown -->
+  <g transform="translate(612, 114)">
+    <rect width="564" height="366" rx="12" fill="#ffffff" stroke="#cfd8cf" stroke-width="1.5"/>
+    <text x="24" y="34" class="f" font-size="16" font-weight="700" fill="#1c292a">分项类别召回率与关键要素匹配明细</text>
+
+    <!-- Row 1: 基本信息 -->
+    <g transform="translate(24, 58)">
+      <text x="0" y="14" class="f" font-size="13" font-weight="700" fill="#22302c">基本信息（标题栏键值）</text>
+      <text x="516" y="14" text-anchor="end" class="mono" font-size="12.5" font-weight="700" fill="#356844">0.0% → 100.0% (23/23)</text>
+      <rect x="0" y="22" width="516" height="14" rx="7" fill="#eff2ec"/>
+      <rect x="0" y="22" width="516" height="14" rx="7" fill="#356844"/>
+    </g>
+
+    <!-- Row 2: 尺寸与公差 -->
+    <g transform="translate(24, 108)">
+      <text x="0" y="14" class="f" font-size="13" font-weight="700" fill="#22302c">尺寸与公差（含形位公差/上下偏差）</text>
+      <text x="516" y="14" text-anchor="end" class="mono" font-size="12.5" font-weight="700" fill="#356844">52.9% → 100.0% (85/85)</text>
+      <rect x="0" y="22" width="516" height="14" rx="7" fill="#eff2ec"/>
+      <rect x="0" y="22" width="273" height="14" rx="7" fill="#d5dcd4"/>
+      <rect x="0" y="22" width="516" height="14" rx="7" fill="#689f38" fill-opacity="0.9"/>
+    </g>
+
+    <!-- Row 3: 技术要求 -->
+    <g transform="translate(24, 158)">
+      <text x="0" y="14" class="f" font-size="13" font-weight="700" fill="#22302c">技术要求（描边中文长句段落）</text>
+      <text x="516" y="14" text-anchor="end" class="mono" font-size="12.5" font-weight="700" fill="#2e7d8a">0.0% → 100.0% (7/7)</text>
+      <rect x="0" y="22" width="516" height="14" rx="7" fill="#eff2ec"/>
+      <rect x="0" y="22" width="516" height="14" rx="7" fill="#2e7d8a"/>
+    </g>
+
+    <!-- Row 4: 版本记录 -->
+    <g transform="translate(24, 208)">
+      <text x="0" y="14" class="f" font-size="13" font-weight="700" fill="#22302c">版本记录（多行修订履历表）</text>
+      <text x="516" y="14" text-anchor="end" class="mono" font-size="12.5" font-weight="700" fill="#c6842f">0.0% → 90.9% (10/11)</text>
+      <rect x="0" y="22" width="516" height="14" rx="7" fill="#eff2ec"/>
+      <rect x="0" y="22" width="469" height="14" rx="7" fill="#c6842f"/>
+    </g>
+
+    <!-- Row 5: 其他标注 -->
+    <g transform="translate(24, 258)">
+      <text x="0" y="14" class="f" font-size="13" font-weight="700" fill="#22302c">其他标注（基准框 / 剖视向 / 视角）</text>
+      <text x="516" y="14" text-anchor="end" class="mono" font-size="12.5" font-weight="700" fill="#52695b">46.2% → 84.6% (11/13)</text>
+      <rect x="0" y="22" width="516" height="14" rx="7" fill="#eff2ec"/>
+      <rect x="0" y="22" width="436" height="14" rx="7" fill="#637b6c"/>
+    </g>
+
+    <!-- Row 6: 气泡号配对 -->
+    <g transform="translate(24, 308)">
+      <text x="0" y="14" class="f" font-size="13" font-weight="700" fill="#22302c">检验气泡【1】~【59】就近配对率</text>
+      <text x="516" y="14" text-anchor="end" class="mono" font-size="12.5" font-weight="700" fill="#1c292a">18.6% → 100.0% (59/59)</text>
+      <rect x="0" y="22" width="516" height="14" rx="7" fill="#eff2ec"/>
+      <rect x="0" y="22" width="516" height="14" rx="7" fill="#1c292a"/>
+    </g>
+  </g>
+
+  <!-- Bottom Card: 4-Layer Zero-GT Evaluation System -->
+  <g transform="translate(24, 498)">
+    <rect width="1152" height="100" rx="12" fill="#1c292a"/>
+    <text x="24" y="30" class="f" font-size="14" font-weight="700" fill="#d0ef92">无标准答案场景（Zero-Ground-Truth）四层质量评判闭环</text>
+
+    <g transform="translate(24, 44)">
+      <rect x="0" y="0" width="266" height="42" rx="8" fill="#273839"/>
+      <text x="12" y="18" class="mono" font-size="11.5" font-weight="700" fill="#d0ef92">L1 · 内在一致性锚点（零 API）</text>
+      <text x="12" y="34" class="f" font-size="11.5" fill="#dce5dd">气泡连号完备率 · 标题栏必填项 · 重复/边标归零</text>
+
+      <rect x="280" y="0" width="266" height="42" rx="8" fill="#273839"/>
+      <text x="292" y="18" class="mono" font-size="11.5" font-weight="700" fill="#d0ef92">L2 · 人工校核遥测（内置导出）</text>
+      <text x="292" y="34" class="f" font-size="11.5" fill="#dce5dd">导出 JSON 自动统计保留/删除/手绘补框，沉淀真值</text>
+
+      <rect x="560" y="0" width="266" height="42" rx="8" fill="#273839"/>
+      <text x="572" y="18" class="mono" font-size="11.5" font-weight="700" fill="#d0ef92">L3 · 多模态 VLM 局部裁切抽检</text>
+      <text x="572" y="34" class="f" font-size="11.5" fill="#dce5dd">按定位框裁切原图对照提取文本，低成本盲测准确率</text>
+
+      <rect x="840" y="0" width="264" height="42" rx="8" fill="#273839"/>
+      <text x="852" y="18" class="mono" font-size="11.5" font-weight="700" fill="#d0ef92">L4 · CLI 自动化回归评测</text>
+      <text x="852" y="34" class="f" font-size="11.5" fill="#dce5dd">evaluate.mjs 同时输出有真值 P/R/F1 与无真值健康度</text>
+    </g>
+  </g>
+</svg>

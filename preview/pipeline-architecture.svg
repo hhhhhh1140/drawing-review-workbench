@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" width="1200" height="640" role="img" aria-label="六阶段 CAD 矢量拓扑与靶向 OCR 解析架构图">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f7f8f4"/>
+      <stop offset="100%" stop-color="#eef1e9"/>
+    </linearGradient>
+    <linearGradient id="darkHdr" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1c292a"/>
+      <stop offset="100%" stop-color="#283b3c"/>
+    </linearGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8.5 5 L 0 8.5 z" fill="#356844"/>
+    </marker>
+    <style>
+      .f { font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", "Segoe UI", sans-serif; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    </style>
+  </defs>
+
+  <!-- Outer Card -->
+  <rect x="0" y="0" width="1200" height="640" rx="16" fill="url(#bgGrad)" stroke="#d6dcd4" stroke-width="2"/>
+
+  <!-- Top Header Banner -->
+  <rect x="24" y="22" width="1152" height="76" rx="12" fill="url(#darkHdr)"/>
+  <rect x="44" y="41" width="96" height="24" rx="12" fill="#d0ef92"/>
+  <text x="92" y="57" text-anchor="middle" class="mono" font-size="12" font-weight="700" fill="#1c292a">6-STAGE</text>
+  <text x="156" y="58" class="f" font-size="21" font-weight="700" fill="#f7f9f5">CAD 工程图矢量拓扑 + 靶向微区 OCR 混合解析架构</text>
+  <text x="156" y="81" class="f" font-size="13" fill="#b9c9bc">摒弃传统「全图盲切 OCR + 纯文本平铺」，融合 PDF.js 图元几何拓扑与按需局部旋转识别（100% 浏览器本地运行）</text>
+
+  <!-- Input Stream Bar -->
+  <rect x="24" y="114" width="1152" height="52" rx="10" fill="#ffffff" stroke="#d8ded6" stroke-width="1.5"/>
+  <rect x="38" y="126" width="124" height="28" rx="6" fill="#1c292a"/>
+  <text x="100" y="145" text-anchor="middle" class="f" font-size="13" font-weight="700" fill="#d0ef92">输入：CAD PDF</text>
+
+  <text x="184" y="145" class="mono" font-size="12.5" font-weight="600" fill="#23312d">1. getTextContent()</text>
+  <text x="328" y="145" class="f" font-size="12.5" fill="#5e6d68">原生文字坐标与旋转矩阵</text>
+
+  <line x1="486" y1="126" x2="486" y2="154" stroke="#dfe4dc" stroke-width="1.5"/>
+  <text x="506" y="145" class="mono" font-size="12.5" font-weight="600" fill="#23312d">2. getOperatorList()</text>
+  <text x="655" y="145" class="f" font-size="12.5" fill="#5e6d68">constructPath 线段/矩形/圆弧/曲线</text>
+
+  <line x1="874" y1="126" x2="874" y2="154" stroke="#dfe4dc" stroke-width="1.5"/>
+  <text x="894" y="145" class="mono" font-size="12.5" font-weight="600" fill="#23312d">3. Canvas 2D (300 DPI)</text>
+  <text x="1055" y="145" class="f" font-size="12.5" fill="#5e6d68">微裁切旋转 OCR 像素源</text>
+
+  <!-- Row 1 Cards: Stage 01, 02, 03 -->
+  <!-- Stage 01 -->
+  <g transform="translate(24, 186)">
+    <rect width="364" height="170" rx="12" fill="#ffffff" stroke="#cfd8cf" stroke-width="1.5"/>
+    <rect x="0" y="0" width="364" height="6" rx="3" fill="#356844"/>
+    <rect x="18" y="20" width="76" height="22" rx="6" fill="#edf4e8"/>
+    <text x="56" y="35" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#356844">STAGE 01</text>
+    <text x="104" y="36" class="f" font-size="16" font-weight="700" fill="#1c292a">空间去重与零字距紧缩</text>
+    <text x="18" y="64" class="f" font-size="12.5" fill="#4f5e59">• 多图层完全重叠文字空间哈希去重（消除 47.5% 重复）</text>
+    <text x="18" y="86" class="f" font-size="12.5" fill="#4f5e59">• NFKC 与康熙部首归一（⻆→角、⻓→长）及同行符号拼接</text>
+    <text x="18" y="108" class="f" font-size="12.5" fill="#4f5e59">• 单字符打散序列紧缩重组，恢复完整尺寸语义</text>
+    <rect x="18" y="124" width="328" height="32" rx="6" fill="#f5f7f2" stroke="#e2e7df"/>
+    <text x="30" y="145" class="mono" font-size="12" fill="#2b3b36">"5 3 . 8" → "53.8"   |   "R 0 . 5 M A X" → "R0.5 MAX"</text>
+  </g>
+
+  <!-- Arrow 01 -> 02 -->
+  <line x1="392" y1="271" x2="412" y2="271" stroke="#356844" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+  <!-- Stage 02 -->
+  <g transform="translate(418, 186)">
+    <rect width="364" height="170" rx="12" fill="#ffffff" stroke="#cfd8cf" stroke-width="1.5"/>
+    <rect x="0" y="0" width="364" height="6" rx="3" fill="#4e8240"/>
+    <rect x="18" y="20" width="76" height="22" rx="6" fill="#edf4e8"/>
+    <text x="56" y="35" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#356844">STAGE 02</text>
+    <text x="104" y="36" class="f" font-size="16" font-weight="700" fill="#1c292a">图框坐标与修改三角剥离</text>
+    <text x="18" y="64" class="f" font-size="12.5" fill="#4f5e59">• 外框 4.5% 边缘环带过滤分区坐标（1~16 / A~H）</text>
+    <text x="18" y="86" class="f" font-size="12.5" fill="#4f5e59">• 检测左右斜腰 + 水平底边构成的闭合三角形过滤 △1~9</text>
+    <text x="18" y="108" class="f" font-size="12.5" fill="#4f5e59">• 严格区分三角形与矩形框，完整保留理论尺寸与基准</text>
+    <rect x="18" y="124" width="328" height="32" rx="6" fill="#f5f7f2" stroke="#e2e7df"/>
+    <text x="30" y="145" class="mono" font-size="12" fill="#2b3b36">剥离: △2 / 边标 A~H   |   保留: [50] 理论框 · [A] 基准</text>
+  </g>
+
+  <!-- Arrow 02 -> 03 -->
+  <line x1="786" y1="271" x2="806" y2="271" stroke="#356844" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+  <!-- Stage 03 -->
+  <g transform="translate(812, 186)">
+    <rect width="364" height="170" rx="12" fill="#ffffff" stroke="#cfd8cf" stroke-width="1.5"/>
+    <rect x="0" y="0" width="364" height="6" rx="3" fill="#689f38"/>
+    <rect x="18" y="20" width="76" height="22" rx="6" fill="#edf4e8"/>
+    <text x="56" y="35" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#356844">STAGE 03</text>
+    <text x="104" y="36" class="f" font-size="16" font-weight="700" fill="#1c292a">表格拓扑重建（标题栏/版本表）</text>
+    <text x="18" y="64" class="f" font-size="12.5" fill="#4f5e59">• 合并横纵线段（兼容粗线矩形条），并查集还原单元格</text>
+    <text x="18" y="86" class="f" font-size="12.5" fill="#4f5e59">• 标题栏白遮罩已知 PDF 值后对描边中文表头靶向 OCR</text>
+    <text x="18" y="108" class="f" font-size="12.5" fill="#4f5e59">• 支持同格上下排与独立窄表头格；版本表按行配对组装</text>
+    <rect x="18" y="124" width="328" height="32" rx="6" fill="#f5f7f2" stroke="#e2e7df"/>
+    <text x="30" y="145" class="mono" font-size="12" fill="#2b3b36">图号: DW30204 · 材料: ADC12 · Rev 1.3 版本记录</text>
+  </g>
+
+  <!-- Connector Row 1 -> Row 2 -->
+  <path d="M 994 356 L 994 374 L 206 374 L 206 388" fill="none" stroke="#356844" stroke-width="2" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+
+  <!-- Row 2 Cards: Stage 04, 05, 06 -->
+  <!-- Stage 04 -->
+  <g transform="translate(24, 392)">
+    <rect width="364" height="170" rx="12" fill="#ffffff" stroke="#cfd8cf" stroke-width="1.5"/>
+    <rect x="0" y="0" width="364" height="6" rx="3" fill="#2e7d8a"/>
+    <rect x="18" y="20" width="76" height="22" rx="6" fill="#e8f3f5"/>
+    <text x="56" y="35" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#2e7d8a">STAGE 04</text>
+    <text x="104" y="36" class="f" font-size="16" font-weight="700" fill="#1c292a">形位公差框格几何解码</text>
+    <text x="18" y="64" class="f" font-size="12.5" fill="#4f5e59">• 识别多格公差框结构（横排与竖排 90° 自动摆正）</text>
+    <text x="18" y="86" class="f" font-size="12.5" fill="#4f5e59">• 直接解析格内线段斜率、同心圆、十字准星与圆内 M</text>
+    <text x="18" y="108" class="f" font-size="12.5" fill="#4f5e59">• 对纯描边公差值格执行高倍正向数字 OCR 补全</text>
+    <rect x="18" y="124" width="328" height="32" rx="6" fill="#f3f8f9" stroke="#dce8ea"/>
+    <text x="30" y="145" class="mono" font-size="12" fill="#1f4e57">解码: ⊥  ▱  ∥  ≡  ○  ◎  ⌖   +  ⌀ 0.15 Ⓜ | A | B</text>
+  </g>
+
+  <!-- Arrow 04 -> 05 -->
+  <line x1="392" y1="477" x2="412" y2="477" stroke="#356844" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+  <!-- Stage 05 -->
+  <g transform="translate(418, 392)">
+    <rect width="364" height="170" rx="12" fill="#ffffff" stroke="#cfd8cf" stroke-width="1.5"/>
+    <rect x="0" y="0" width="364" height="6" rx="3" fill="#c6842f"/>
+    <rect x="18" y="20" width="76" height="22" rx="6" fill="#fbf3e6"/>
+    <text x="56" y="35" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#a86a1d">STAGE 05</text>
+    <text x="104" y="36" class="f" font-size="16" font-weight="700" fill="#1c292a">双行偏差拼装与矢量符号找回</text>
+    <text x="18" y="64" class="f" font-size="12.5" fill="#4f5e59">• 建立主尺寸局部阅读坐标系（兼容水平/垂直/斜向标注）</text>
+    <text x="18" y="86" class="f" font-size="12.5" fill="#4f5e59">• 自动归拢字号约 0.65x 的双行上下偏差并找回矢量负号 −</text>
+    <text x="18" y="108" class="f" font-size="12.5" fill="#4f5e59">• 检测前导圆+斜线找回 ⌀，检测尾部十字+底线找回 ± 公差</text>
+    <rect x="18" y="124" width="328" height="32" rx="6" fill="#faf6ef" stroke="#ece2d0"/>
+    <text x="30" y="145" class="mono" font-size="12" fill="#5e4119">⌀62 +0.025/−0.010   |   54.8 ±0.05   |   128 −0.1/−0.2</text>
+  </g>
+
+  <!-- Arrow 05 -> 06 -->
+  <line x1="786" y1="477" x2="806" y2="477" stroke="#356844" stroke-width="2.2" marker-end="url(#arrow)"/>
+
+  <!-- Stage 06 -->
+  <g transform="translate(812, 392)">
+    <rect width="364" height="170" rx="12" fill="#ffffff" stroke="#cfd8cf" stroke-width="1.5"/>
+    <rect x="0" y="0" width="364" height="6" rx="3" fill="#1c292a"/>
+    <rect x="18" y="20" width="76" height="22" rx="6" fill="#ebeeec"/>
+    <text x="56" y="35" text-anchor="middle" class="mono" font-size="11.5" font-weight="700" fill="#1c292a">STAGE 06</text>
+    <text x="104" y="36" class="f" font-size="16" font-weight="700" fill="#1c292a">笔划连通域聚类与气泡配对</text>
+    <text x="18" y="64" class="f" font-size="12.5" fill="#4f5e59">• 收集未覆盖的细小描边笔划并执行空间网格连通域聚类</text>
+    <text x="18" y="86" class="f" font-size="12.5" fill="#4f5e59">• 整块裁切执行 PSM 6 段落 OCR，彻底根除切片拼缝断字</text>
+    <text x="18" y="108" class="f" font-size="12.5" fill="#4f5e59">• 提取【1】~【N】检验气泡，按边缘最短欧氏距离就近挂载</text>
+    <rect x="18" y="124" width="328" height="32" rx="6" fill="#f3f5f3" stroke="#dfe3df"/>
+    <text x="30" y="145" class="mono" font-size="12" fill="#23312d">技术要求 100% 完整召回  ·  气泡【1】~【59】精准配对</text>
+  </g>
+
+  <!-- Output Footer Bar -->
+  <rect x="24" y="578" width="1152" height="42" rx="10" fill="#1c292a"/>
+  <text x="44" y="604" class="f" font-size="13" font-weight="700" fill="#d0ef92">结构化输出 &amp; 质量闭环：</text>
+  <text x="206" y="604" class="f" font-size="12.5" fill="#eef3ec">基本信息 · 尺寸与公差 · 技术要求 · 版本记录 · 其他标注   |   像素级定位框 box[x,y,w,h]   |   内在一致性健康分 + 人工校核纠偏遥测</text>
+</svg>
