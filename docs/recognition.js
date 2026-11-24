@@ -1,10 +1,11 @@
 // Source boxes use page-relative coordinates [left, top, width, height], measured from the top left.
+import './vendor/pdf-polyfills.mjs';
 const asset = path => new URL('vendor/' + path, document.baseURI).href;
 let pdfjs;
 
 export async function openPDF(bytes) {
   pdfjs ??= await import('./vendor/pdf.min.mjs');
-  pdfjs.GlobalWorkerOptions.workerSrc = asset('pdf.worker.min.mjs');
+  pdfjs.GlobalWorkerOptions.workerSrc = asset('pdf.worker.shim.mjs');
   return pdfjs.getDocument({
     data: bytes, cMapUrl: asset('cmaps/'), cMapPacked: true,
     standardFontDataUrl: asset('standard_fonts/'), wasmUrl: asset('wasm/'), isEvalSupported: false
@@ -13,10 +14,13 @@ export async function openPDF(bytes) {
 
 export async function renderPage(page, longest) {
   const native = page.getViewport({ scale: 1 });
-  const viewport = page.getViewport({ scale: longest / Math.max(native.width, native.height) });
+  const maxAreaScale = Math.sqrt(16000000 / Math.max(1, native.width * native.height));
+  const scale = Math.min(longest / Math.max(native.width, native.height), maxAreaScale);
+  const viewport = page.getViewport({ scale });
   const canvas = document.createElement('canvas');
   canvas.width = Math.ceil(viewport.width); canvas.height = Math.ceil(viewport.height);
-  await page.render({ canvas, viewport }).promise;
+  const canvasContext = canvas.getContext('2d');
+  await page.render({ canvas, canvasContext, viewport }).promise;
   return canvas;
 }
 
@@ -131,7 +135,7 @@ async function createOCRWorker() {
   const w = await T.createWorker('chi_sim+eng', 1, {
     workerPath: asset('worker.min.js'),
     corePath: asset('tesseract-core-lstm.wasm.js'),
-    langPath: asset(''),
+    langPath: asset('').replace(/\/$/, ''),
     workerBlobURL: false
   });
   return { worker: w, PSM: T.PSM };

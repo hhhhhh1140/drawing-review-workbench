@@ -1,4 +1,4 @@
-import {openPDF,renderPage,imageOf,extract} from './recognition.js';
+import {openPDF,renderPage,imageOf,extract} from './recognition.js?v=20261124b';
 const $=id=>document.getElementById(id);
 const patterns={shield:'M12 3 4 6v5c0 5 4 8 8 10 4-2 8-5 8-10V6z M8 12l3 3 5-6',chart:'M4 19h16M7 16V9m5 7V5m5 11v-5',upload:'M12 16V3m-5 5 5-5 5 5 M4 15v5h16v-5',download:'M12 3v13m-5-5 5 5 5-5 M4 16v5h16v-5',scan:'M8 3H3v5m13-5h5v5M3 16v5h5m13-5v5h-5 M7 12h10 M12 7v10',file:'M6 3h8l4 4v14H6z M14 3v5h4 M9 12h6m-6 4h6',expand:'M4 9V4h5M4 4l6 6m10 5v5h-5m5 0-6-6',fit:'M8 4H4v4m12-4h4v4M4 16v4h4m12-4v4h-4 M8 9h8v6H8z',minus:'M5 12h14',plus:'M12 5v14M5 12h14',list:'M8 5h13M8 12h13M8 19h13M3 5h.1M3 12h.1M3 19h.1',search:'M16 16l5 5 M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0',target:'M12 2v4m10 6h-4m-6 10v-4M2 12h4 M19 12a7 7 0 1 1-14 0 7 7 0 0 1 14 0 M13 12a1 1 0 1 1-2 0 1 1 0 0 1 2 0',chevron:'m6 9 6 6 6-6',ruler:'m3 15 12-12 6 6L9 21z M12 6l3 3m-6 0 2 2m-5 1 3 3',notes:'M5 3h14v18H5z M8 8h8m-8 4h8m-8 4h5',history:'M3 11a9 9 0 1 1 2 7 M3 4v7h7 M12 7v5l4 2',tag:'M3 3h8l10 10-8 8L3 11z M7 7h.1',check:'m4 12 5 5L20 6',close:'m6 6 12 12M6 18 18 6'};
 const icon=k=>'<svg class="i" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.65" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="'+patterns[k]+'"/></svg>';
@@ -58,15 +58,18 @@ async function startDoc(file,docKey,record,initial=false){
   if(presetEntry&&!file){
     await loadPreset(presetEntry[0]);
     pages=structuredClone(sample.pages);
-  }else if(file?.type==='application/pdf'||/\.pdf$/i.test(file?.name??record?.name)){
+  }else if(!file){
+    throw Error('历史缓存图纸已失效，请重新上传');
+  }else if(file.type==='application/pdf'||/\.pdf$/i.test(file.name??record?.name)){
     newPdf=await openPDF(new Uint8Array(await file.arrayBuffer()));
     try{for(let i=1;i<=newPdf.numPages;i++){const p=await newPdf.getPage(i),v=p.getViewport({scale:1});pages.push({width:v.width,height:v.height});}}
     catch(e){await newPdf.destroy();throw e;}
   }else{newImg=await imageOf(file);pages=[{width:newImg.naturalWidth,height:newImg.naturalHeight,image:newImg.src}];}
   docSeq++;teardown();pdf=newPdf;img=newImg;key=docKey;fileBlob=file||null;
   syncPresetState(docKey);
-  data={name:file?.name||record?.name||sample.name,pages,items:record?.items??(initial&&isPresetKey(key)?structuredClone(sample.items):[])};
-  removed=new Set(record?.removed??[]);selected=null;page=1;filter='all';limits={};opened=new Set([cats[0],cats[1]]);
+  const useSavedItems=record?.items&&(!isPresetKey(key)||record.items.some(i=>i.edited)||(record.removed?.length>0));
+  data={name:file?.name||record?.name||sample.name,pages,items:useSavedItems?record.items:(initial&&isPresetKey(key)?structuredClone(sample.items):[])};
+  removed=new Set(useSavedItems?(record?.removed??[]):[]);selected=null;page=1;filter='all';limits={};opened=new Set([cats[0],cats[1]]);
   $('search').value='';$('editor').hidden=true;cancelBox();$('filename').textContent=data.name;
   const isPDF=isPresetKey(key)||!!pdf;
   $('fileinfo').textContent=[isPDF?'PDF 工程图纸':'图纸图像',pages.length+' 页',!file&&isPresetKey(key)?'内置样图':(file.size/1048576).toFixed(2)+' MB'].join('  ·  ');
@@ -300,7 +303,11 @@ async function boot(){setBusy(true,'正在载入工作台…');
  try{
    const defaultKey=await loadPreset('flange');
    const k=await dbRead('current').catch(()=>null),record=k?await dbRead(k).catch(()=>null):null;
-   await startDoc(record?.blob||null,record?k:defaultKey,record,true);
+   const hasUserWork=record&&(isPresetKey(k)?(record.items?.some(i=>i.edited)||(record.removed?.length>0)):!!record.blob);
+   if(hasUserWork){
+     try{await startDoc(record.blob||null,k,record,true);return;}catch{}
+   }
+   await startDoc(null,defaultKey,null,true);
  }
  catch(e){toast('工作台未载入：'+e.message);}
  finally{setBusy(false);renderList();}
