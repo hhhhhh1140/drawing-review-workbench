@@ -1,0 +1,17 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#182425"><title>图析 · 图纸识别工作台</title><meta name="description" content="在浏览器中识别工程图纸，定位原图标注，逐项校核并导出结果。"><link rel="icon" href="mark.svg"><link rel="stylesheet" href="style.css"></head>
+<body>
+<header class="top"><div class="brand"><img src="mark.svg" width="32" height="32" alt=""><strong>图析</strong></div><span class="divider"></span><span class="workspace">工程图纸工作台</span><div class="grow"></div><span class="private"><i data-icon="shield"></i> 本地处理</span><button id="export" class="topbtn"><i data-icon="download"></i>导出结果</button></header>
+<main><section class="intro"><div><h1>图纸识别</h1><p>对照原图，逐项核对尺寸、标注与技术要求。</p></div><div class="actions"><input id="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp" hidden><button id="upload" class="btn"><i data-icon="upload"></i>上传图纸</button><button id="recognize" class="btn primary"><i data-icon="scan"></i>AI 识别</button></div></section>
+<div class="grid"><section class="panel viewer"><div class="filebar"><span class="fileicon"><i data-icon="file"></i></span><div class="filemeta"><b id="filename">正在载入图纸…</b><small id="fileinfo"></small></div><button class="iconbtn" id="expand" title="放大预览" aria-label="放大预览"><i data-icon="expand"></i></button></div>
+<div class="canvaswrap"><div class="viewtag"><span class="live"></span>图纸预览</div><div id="viewport" tabindex="0" aria-label="图纸预览，可缩放并拖动"><div id="sheet"><img id="paper" alt="工程图纸原图" draggable="false"><div id="overlay"></div></div></div>
+<div id="drawhint" hidden>在图纸上拖动，框选标注位置 <button id="cancelBox">取消</button></div>
+<div class="tools"><button id="less" aria-label="缩小" title="缩小"><i data-icon="minus"></i></button><span id="zoom">100%</span><button id="more" aria-label="放大" title="放大"><i data-icon="plus"></i></button><em></em><button id="fit" aria-label="适应窗口" title="适应窗口"><i data-icon="fit"></i></button></div></div>
+<div class="viewfoot"><div class="pagination"><button id="prev" title="上一页" aria-label="上一页">‹</button><span id="pageno">1 / 1</span><button id="next" title="下一页" aria-label="下一页">›</button></div><button id="marks" class="toggle" role="switch" aria-checked="true"><span class="switch"></span>显示定位框</button></div></section>
+<section class="panel results"><div class="rhead"><span class="headicon"><i data-icon="list"></i></span><h2>提取结果</h2><span class="count" id="count">0</span><button id="add" class="textbtn"><i data-icon="plus"></i>补录</button></div>
+<div id="progress" role="status" hidden><span id="progressText"></span><progress max="100" value="0"></progress></div>
+<div class="tabs" role="group" aria-label="结果状态"><button data-filter="all" class="active">全部</button><button data-filter="pending">待复核 <span id="pending">0</span></button><button data-filter="done">已确认 <span id="done">0</span></button></div>
+<label class="search"><i data-icon="search"></i><input id="search" type="search" placeholder="搜索字段或识别内容" aria-label="搜索字段或识别内容"></label>
+<div id="list"></div><div id="editor" hidden></div>
+<footer class="rfoot"><i data-icon="target"></i><span id="footmsg">点击提取项，定位到图纸对应位置</span></footer></section></div>
+</main><div id="toast" role="status"></div><script type="module" src="app.js"></script></body></html>
