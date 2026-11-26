@@ -443,16 +443,20 @@ function runGroundTruthBenchmark(preds, gtPath) {
 
 // --- 3. CLI Entry ---
 const rawArgs = process.argv.slice(2);
-let outPath = null, gtFlagPath = null;
+let outPath = null, gtFlagPath = null, defaultRole = null, matePath = null, diffFromPath = null;
 const posArgs = [];
 for (let i = 0; i < rawArgs.length; i++) {
   if (rawArgs[i] === '--out' && rawArgs[i + 1]) { outPath = rawArgs[++i]; }
   else if (rawArgs[i] === '--gt' && rawArgs[i + 1]) { gtFlagPath = rawArgs[++i]; }
+  else if (rawArgs[i] === '--role' && rawArgs[i + 1]) { defaultRole = rawArgs[++i]; }
+  else if (rawArgs[i] === '--mate' && rawArgs[i + 1]) { matePath = rawArgs[++i]; }
+  else if (rawArgs[i] === '--diff-from' && rawArgs[i + 1]) { diffFromPath = rawArgs[++i]; }
+  else if (rawArgs[i] === '--review') { /* enabled automatically */ }
   else posArgs.push(rawArgs[i]);
 }
 
 if (!posArgs.length || rawArgs.includes('--help') || rawArgs.includes('-h')) {
-  console.log('用法: node scripts/evaluate.mjs <图纸.pdf|png|jpg|webp> [标准答案.json | --gt 标准答案.json] [--out 导出结果.json]');
+  console.log('用法: node scripts/evaluate.mjs <图纸.pdf|png|jpg|webp> [标准答案.json | --gt 标准答案.json] [--role BearingSeat] [--mate 配合件.pdf|json] [--diff-from 旧版.pdf|json] [--out 导出结果.json]');
   process.exit(0);
 }
 
@@ -465,22 +469,34 @@ if (!fs.existsSync(inputPath)) {
 
 setupEnvironment();
 const { openPDF, extract } = await import(pathToFileURL(path.join(docsDir, 'recognition.js')).href);
+const { buildEDM, runDesignReview, evaluateShaftHoleFit, runVersionDiffReview } = await import(pathToFileURL(path.join(docsDir, 'review-engine.js')).href);
 
-const t0 = Date.now();
-const isPdf = /\.pdf$/i.test(inputPath);
-let pdf = null, img = null, pages = 1;
-if (isPdf) {
-  pdf = wrapPdfRenderer(await openPDF(new Uint8Array(fs.readFileSync(inputPath))), inputPath);
-  pages = pdf.numPages;
-} else {
-  img = loadRasterImage(inputPath);
+async function loadDocItems(p) {
+  const abs = path.resolve(p);
+  if (/\.json$/i.test(abs)) {
+    const j = JSON.parse(fs.readFileSync(abs, 'utf8'));
+    return { name: j.name || j.图纸 || path.basename(abs), items: j.items || [], preflight: null };
+  }
+  const isP = /\.pdf$/i.test(abs);
+  let pDoc = null, im = null, pg = 1;
+  if (isP) {
+    pDoc = wrapPdfRenderer(await openPDF(new Uint8Array(fs.readFileSync(abs))), abs);
+    pg = pDoc.numPages;
+  } else {
+    im = loadRasterImage(abs);
+  }
+  const r = await extract({ pdf: pDoc, img: im, pages: pg, progress: () => {} });
+  if (pDoc) await pDoc.destroy();
+  return { name: path.basename(abs), items: r.items, preflight: r.preflight || null, pages: pg, warning: r.warning };
 }
 
-const result = await extract({ pdf, img, pages, progress: () => {} });
-if (pdf) await pdf.destroy();
+const t0 = Date.now();
+const mainDoc = await loadDocItems(inputPath);
+const pages = mainDoc.pages || 1;
+const result = { items: mainDoc.items, warning: mainDoc.warning, preflight: mainDoc.preflight };
 const elapsed = ((Date.now() - t0) / 1000).toFixed(2);
 
-console.log(`图纸文件: ${path.basename(inputPath)} (${pages} 页) · 耗时 ${elapsed}s`);
+console.log(`图纸文件: ${path.basename(inputPath)} (${pages} 页) · 耗时 ${elapsed}s · 预检类型: ${result.preflight?.primaryMode || 'N/A'}`);
 if (result.warning) console.log('提示:', result.warning);
 
 runIntrinsicAudit(result.items);
@@ -489,8 +505,71 @@ if (gtPath) {
   else runGroundTruthBenchmark(result.items, gtPath);
 }
 
+// --- 4. Engineering Design Review (5-Layer EDM + Rule Engine) ---
+const makeOverrides = doc => {
+  if (!defaultRole) return {};
+  const tmp = buildEDM(doc, doc.preflight);
+  const ov = {};
+  for (const r of tmp.L2_Specifications.roughness) ov[r.id] = defaultRole;
+  return ov;
+};
+const edm = buildEDM({ name: path.basename(inputPath), items: result.items }, result.preflight, makeOverrides(mainDoc));
+const review = runDesignReview(edm);
+
+console.log('\n================ 3. 工程设计智能评审报告 (EDM + Rule Engine) ================');
+console.log(`零件语义类型: ${edm.L5_Context.partFamilyLabel} | 恢复特征数: ${edm.L3_Features.length} | 自动化规则覆盖率: ${review.autoCoveragePct}%`);
+console.log(`评审状态分布: PASS=${review.counts.PASS} | FAIL=${review.counts.FAIL} | WARNING=${review.counts.WARNING} | UNKNOWN=${review.counts.UNKNOWN} | N/A=${review.counts.NOT_APPLICABLE}`);
+for (const r of review.results) {
+  if (r.status === 'PASS' && !rawArgs.includes('--verbose')) continue;
+  console.log(`  [${r.status}] ${r.ruleId} (${r.standard.code}) ${r.title}`);
+  console.log(`         实际值: ${r.actualValue}`);
+  if (r.status !== 'PASS') console.log(`         建议  : ${r.suggestion}`);
+}
+if (!rawArgs.includes('--verbose') && review.counts.PASS > 0) {
+  console.log(`  (另有 ${review.counts.PASS} 项通过规则已折叠，添加 --verbose 可展开全部)`);
+}
+
+let fitReport = null;
+if (matePath && fs.existsSync(path.resolve(matePath))) {
+  const mateDoc = await loadDocItems(matePath);
+  const mateEDM = buildEDM(mateDoc, mateDoc.preflight);
+  const hDim = mateEDM.L2_Specifications.dimensions.find(d => d.prefix === '⌀' && (d.isoLookup?.isHole || d.minLimit != null)) ||
+               edm.L2_Specifications.dimensions.find(d => d.prefix === '⌀' && d.isoLookup?.isHole);
+  const shaftCands = [
+    ...edm.L2_Specifications.dimensions.filter(d => d.prefix === '⌀' && d.isoLookup && !d.isoLookup.isHole),
+    ...mateEDM.L2_Specifications.dimensions.filter(d => d.prefix === '⌀' && d.isoLookup && !d.isoLookup.isHole)
+  ];
+  const sDim = hDim
+    ? shaftCands.sort((a, b) => Math.abs(a.nominal - hDim.nominal) - Math.abs(b.nominal - hDim.nominal))[0]
+    : shaftCands[0];
+  fitReport = evaluateShaftHoleFit(sDim, hDim);
+  console.log('\n================ 4. 跨图轴—孔配合工程计算 ================');
+  console.log(`  [${fitReport.status}] 轴(${fitReport.shaftRaw}) × 孔(${fitReport.holeRaw}) => ${fitReport.conclusion}`);
+}
+
+let diffReport = null;
+if (diffFromPath && fs.existsSync(path.resolve(diffFromPath))) {
+  const oldDoc = await loadDocItems(diffFromPath);
+  const oldEDM = buildEDM(oldDoc, oldDoc.preflight, makeOverrides(oldDoc));
+  const oldRev = runDesignReview(oldEDM);
+  diffReport = runVersionDiffReview(oldEDM, oldRev, edm, review, fitReport);
+  console.log(`\n================ 5. 同图号跨版本复审 Semantic Diff (${diffReport.v1Rev} -> ${diffReport.v2Rev}) ================`);
+  console.log(`  字段变更 ${diffReport.modified.length} 项 | 新增 ${diffReport.added.length} 项 | 删除 ${diffReport.removed.length} 项`);
+  for (const m of diffReport.modified) console.log(`  [MOD] ${m.label}: "${m.oldVal}" -> "${m.newVal}"`);
+  for (const res of diffReport.resolvedIssues) console.log(`  [建议关闭] ${res.ruleId} ${res.title} (${res.from} -> ${res.to})`);
+  for (const reg of diffReport.regressedIssues) console.log(`  [新增风险] ${reg.ruleId} ${reg.title} (${reg.from} -> ${reg.to}) · ${reg.detail}`);
+}
+
 if (outPath) {
   const outAbs = path.resolve(outPath);
-  fs.writeFileSync(outAbs, JSON.stringify({ 图纸: path.basename(inputPath), 页数: pages, items: result.items }, null, 2));
-  console.log(`\n已保存识别结果至: ${outAbs}`);
+  fs.writeFileSync(outAbs, JSON.stringify({
+    图纸: path.basename(inputPath),
+    页数: pages,
+    预检信息: result.preflight,
+    评审报告: { 覆盖率: review.autoCoveragePct + '%', 状态统计: review.counts, 结论: review.results },
+    配合计算: fitReport,
+    跨版本复审: diffReport,
+    items: result.items
+  }, null, 2));
+  console.log(`\n已保存识别与评审报告至: ${outAbs}`);
 }

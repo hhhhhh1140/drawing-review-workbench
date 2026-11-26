@@ -9,13 +9,23 @@
 </p>
 
 > **100% 浏览器本地运行 · 零后端依赖 · 零外部 API 调用**  
-> 专为机械制造与质检审图打造：融合 **PDF 矢量图元几何拓扑（`constructPath`）**、**形位公差符号几何解码** 与 **按需靶向微裁切 OCR**，将复杂 CAD 工程图自动转化为带像素级定位框的结构化检验清单，并内置 **无标准答案（Zero-Ground-Truth）内生质检与评测可视化看板**。
+> 专为机械制造与研发设计预审打造：融合 **PDF 矢量图元几何拓扑（`constructPath`）**、**9 类形位公差符号几何解码**、**五层 EDM 工程事实结构化** 与 **16 条确定性工程审核规则引擎**，支持单图制图/公差审核、**跨图轴孔配合微米级间隙计算** 与 **同图号跨版本语义复审（Semantic Diff）**。
 
 ---
 
 ## 一、工作台展示与交互预览
 
-### 1. 全景审图与结构化校核工作台
+### 1. 智能设计审核模式：原图问题证据定位与功能角色确认
+工作台右侧支持在 **「提取校核」** 与 **「智能审核」** 双模式间一键切换。遵循 `UNKNOWN ≠ PASS` 原则：当检测到圆柱面粗糙度（如 `Ra 3.2`）尚未确认功能角色时标记为 `UNKNOWN`；工程师确认为「轴承安装面 (`BearingSeat`)」后，立即触发确定性数值比较检出 `FAIL (3.2 > 0.8 μm)` 并支持登记偏离放行与原图证据定位。
+
+![工程图纸智能设计审核与原图证据定位](preview/review-workbench.png)
+
+### 2. 五层 EDM 工程事实恢复 · 跨图轴孔配合计算 · 跨版本复审工作台
+内置五层工程事实模型（`L1 观测预检 → L2 标准化规格 → L3 几何特征绑定 → L4/L5 功能角色`）、基于 `GB/T 1800.2` 公差表的轴孔极限间隙计算器（如 `V1 ⌀12 h6 × ⌀12 H7 → [0.000 ~ 0.029] mm PASS`，`V2 改轴 ⌀13 h6 未改孔 → [-1.000 ~ -0.971] mm FAIL`），以及跨版本 Semantic Diff 与受影响规则联动重检。
+
+![五层 EDM 工程事实、轴孔配合计算与跨版本复审](preview/review-studio.png)
+
+### 3. 全景审图与结构化提取校核工作台
 左侧支持 CAD 图纸高清无损缩放、气泡定位标记开关与手绘补框；右侧实时统计五大工程分类占比、核心图栏完备度与气泡绑定状态，支持一键筛选、搜索、逐项确认与导出校核统计 JSON。
 
 ![工程图纸结构化识别与校核工作台全景](preview/workbench.png)
@@ -110,8 +120,8 @@ python3 -m http.server 8176 --bind 127.0.0.1 --directory docs
 # 模式 A：有标准答案基准回归评测（输出 Precision / Recall / F1 / 定位框 IoU 与分类明细）
 node scripts/evaluate.mjs docs/sample/flange-housing.pdf --gt docs/sample/flange-housing.json
 
-# 模式 B：无标准答案（Zero-GT）内生锚点健康度体检（无需任何标注文件）
-node scripts/evaluate.mjs docs/sample/flange-housing.pdf --out /tmp/flange-eval-report.json
+# 模式 C：工程设计智能评审 + 跨图轴孔配合计算 + 同图号跨版本复审 Semantic Diff
+node scripts/evaluate.mjs docs/sample/motor-shaft-v2.pdf --role BearingSeat --mate docs/sample/bearing-bore.pdf --diff-from docs/sample/motor-shaft-v1.pdf
 ```
 
 示例输出（`flange-housing.pdf`）：

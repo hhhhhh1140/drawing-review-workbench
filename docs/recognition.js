@@ -94,11 +94,21 @@ function classifyField(text) {
     const m = s.match(pattern);
     if (m && m[1].trim()) return ['基本信息', label, m[1].trim()];
   }
-  if (/要求|表面|毛刺|毛口|翘曲|热处理|粗糙度|不得|不可有|检验|抽样检查|镀层|盐雾|漏气|环保|未注|无指示尺寸|焊接|DEBURR|SHARP\s*EDGES|DIMENSIONS\s*IN|TOLERANCE|FINISH|CHAMFER/i.test(s)) {
+  if (/要求|表面|毛刺|毛口|翘曲|热处理|粗糙度|不得|不可有|检验|抽样检查|镀层|盐雾|漏气|环保|未注|无指示尺寸|焊接|调质|淬火|渗碳|DEBURR|SHARP\s*EDGES|DIMENSIONS\s*IN|TOLERANCE|FINISH|CHAMFER/i.test(s) &&
+      !/^(?:Ra|Rz|Ry|Rq)\s*\d/i.test(s)) {
     return ['技术要求', '要求原文', s];
   }
+  if (/^(?:Ra|Rz|Ry|Rq|▽+)\s*\d+(?:\.\d+)?(?:\s*(?:μm|um|max|min))?$/i.test(s)) {
+    return ['尺寸与公差', '表面粗糙度', s];
+  }
+  if (/^(?:HRC|HBW|HBS|HV|HRA|HRB)\s*\d+(?:\.\d+)?(?:\s*[~～\-−]\s*\d+(?:\.\d+)?)?$/i.test(s)) {
+    return ['技术要求', '硬度要求', s];
+  }
+  if (/^(?:\d+\s*[-×xX]\s*)?[ØΦφ⌀RrMm]?\s*\d+(?:\.\d+)?\s*(?:[A-HJ-ZCDEa-hj-zcde]{1,2}\d{1,2})(?:\s*\([+\-−±\d./\s]+\))?$/.test(s)) {
+    return ['尺寸与公差', '配合公差标注', s];
+  }
   if (!/^\d+:\d+$/.test(compact) && !/^\d{4}\.\d{1,2}\.\d{1,2}$/.test(compact) &&
-      (/\d/.test(compact) && /^(?:min|MAX)?[\s()（）【】\[\]ØΦφ⌀±+−\-\d.RrMmx×X/°~:：|,⊥▱∥≡○◎⌖Ⓜ部]+(?:min|MAX|mm|DIA)?[\d.]*$/i.test(compact) ||
+      (/\d/.test(compact) && /^(?:min|MAX)?[\s()（）【】\[\]ØΦφ⌀±+−\-\d.RrMmCc×xX/°~:：|,⊥▱∥≡○◎⌖↗⇗Ⓜ部]+(?:min|MAX|mm|DIA)?[\d.]*$/i.test(compact) ||
        /^(?:\d+\s*[x×]\s*)?DIA\s*\d+(?:\.\d+)?$/i.test(s))) {
     return ['尺寸与公差', '尺寸标注', s];
   }
@@ -736,8 +746,11 @@ function decodeGDTSymbol(compBox, vec) {
   if (innerCircles.length === 1) return ['○', '圆度'];
   if (innerPara.length >= 1) return ['▱', '平面度'];
   if (innerH.length >= 3) return ['≡', '对称度'];
-  if (innerSlants.length >= 2 && innerH.length === 0) return ['∥', '平行度'];
+  const longSlants = innerSlants.filter(s => Math.hypot(s.w, s.h) >= 8);
+  if (longSlants.length >= 2 && innerH.length >= 1) return ['⇗', '全跳动'];
+  if (longSlants.length >= 2 && innerH.length === 0) return ['∥', '平行度'];
   if (innerH.length >= 1 && innerV.length >= 1) return ['⊥', '垂直度'];
+  if (longSlants.length === 1 && innerV.length === 0) return ['↗', '圆跳动'];
   return null;
 }
 
@@ -777,6 +790,12 @@ async function parseGDTFrames(tokens, vec, canvas, W, H, pageNo, ocrDigitsRunner
     const mCircle = vec.circles.find(c => c.x0 >= c1.x0 + c1.w * 0.45 && c.x1 <= c1.x1 && c.y0 >= c1.y0 && c.y1 <= c1.y1 && c.w >= 10);
     let tolStr = tolToks.map(t => t.text).join('');
     let hasDia = false;
+    if (tolStr && !/[ØΦφ⌀]/.test(tolStr) && tolToks.length) {
+      const leftBound = Math.min(...tolToks.map(t => t.vpBox[0]));
+      const leadDia = vec.circles.some(c => c.x0 >= c1.x0 + 1 && c.x1 <= leftBound + 1.5 && c.y0 >= c1.y0 + 1 && c.y1 <= c1.y1 - 1) ||
+        vec.strokes.filter(s => !s.used && s.x0 >= c1.x0 + 1 && s.x1 <= leftBound + 0.5 && s.y0 >= c1.y0 + 1 && s.y1 <= c1.y1 - 1).length >= 2;
+      if (leadDia) tolStr = '⌀' + tolStr;
+    }
     if (!tolStr && ocrDigitsRunner) {
       const st1 = vec.strokes.filter(s => !s.used && s.x0 >= c1.x0 + 2 && s.x1 <= (mCircle ? mCircle.x0 - 1 : c1.x1 - 2) && s.y0 >= c1.y0 + 2 && s.y1 <= c1.y1 - 2);
       if (st1.length) {
@@ -837,6 +856,12 @@ async function parseGDTFrames(tokens, vec, canvas, W, H, pageNo, ocrDigitsRunner
     const mCircle = vec.circles.find(c => c.y1 <= c1.y0 + c1.h * 0.55 && c.y0 >= c1.y0 && c.x0 >= c1.x0 && c.x1 <= c1.x1 && c.w >= 10);
     let tolStr = tolToks.map(t => t.text).join('');
     let hasDia = false;
+    if (tolStr && !/[ØΦφ⌀]/.test(tolStr) && tolToks.length) {
+      const leftBound = Math.min(...tolToks.map(t => t.vpBox[0]));
+      const leadDia = vec.circles.some(c => c.x0 >= c1.x0 + 1 && c.x1 <= leftBound + 1.5 && c.y0 >= c1.y0 + 1 && c.y1 <= c1.y1 - 1) ||
+        vec.strokes.filter(s => !s.used && s.x0 >= c1.x0 + 1 && s.x1 <= leftBound + 0.5 && s.y0 >= c1.y0 + 1 && s.y1 <= c1.y1 - 1).length >= 2;
+      if (leadDia) tolStr = '⌀' + tolStr;
+    }
     if (!tolStr && ocrDigitsRunner) {
       const st1 = vec.strokes.filter(s => !s.used && s.x0 >= c1.x0 + 2 && s.x1 <= c1.x1 - 2 && s.y0 >= (mCircle ? mCircle.y1 + 1 : c1.y0 + 2) && s.y1 <= c1.y1 - 2);
       if (st1.length) {
@@ -964,6 +989,22 @@ async function parseMainDrawing(tokens, vec, canvas, W, H, pageNo, ocrDigitsRunn
     }
   }
 
+  // Pre-merge standalone roughness/hardness prefixes ("Ra" + "0.8" -> "Ra 0.8", "HRC" + "45-50" -> "HRC 45-50")
+  for (const rTok of tokens) {
+    if (rTok.used || !/^(?:Ra|Rz|Ry|Rq|HRC|HBW|HV)$/i.test(rTok.text)) continue;
+    const nxt = tokens.find(t => !t.used && t !== rTok && /^\d+(?:\.\d+)?(?:[~～\-−]\d+(?:\.\d+)?)?$/.test(t.text) &&
+      Math.abs(t.theta - rTok.theta) < 0.15 && (() => {
+        const dx = (t.vpBox[0] - rTok.vpBox[2]) * Math.cos(rTok.theta) + (t.cy - rTok.cy) * Math.sin(rTok.theta);
+        const dn = Math.abs(-(t.cx - rTok.cx) * Math.sin(rTok.theta) + (t.cy - rTok.cy) * Math.cos(rTok.theta));
+        return dx >= -3 && dx <= 20 && dn <= rTok.fh * 0.8;
+      })());
+    if (nxt) {
+      rTok.used = true;
+      nxt.text = `${rTok.text} ${nxt.text}`;
+      nxt.vpBox = unionBox(rTok.vpBox, nxt.vpBox);
+    }
+  }
+
   // Pre-merge collinear prefix/suffix tokens ("30.8" + "MAX", "min" + "R0.8")
   for (const t of tokens) {
     if (t.used) continue;
@@ -1023,6 +1064,24 @@ async function parseMainDrawing(tokens, vec, canvas, W, H, pageNo, ocrDigitsRunn
     let curBox = [...base.vpBox];
     let valStr = base.text;
     let hasStacked = false;
+
+    // Check adjacent collinear ISO tolerance zone token (e.g. "⌀12" + "h6" -> "⌀12 h6")
+    const isoTok = tokens.find(t => !t.used && t !== base && /^(?:[A-HJ-ZCDE]{1,2}|[a-hj-zcde]{1,2})\d{1,2}$/.test(t.text) &&
+      Math.abs(t.theta - base.theta) < 0.15 && (() => {
+        const [u, n] = localCoords(base, t.bx, t.by);
+        return u >= baseEndU - 2 && u <= baseEndU + 16 && Math.abs(n) <= base.fh * 0.55;
+      })());
+    if (isoTok && /^(?:\d+\s*[-×xX]\s*)?[ØΦφ⌀]?\d+(?:\.\d+)?$/.test(valStr)) {
+      isoTok.used = true;
+      curBox = unionBox(curBox, isoTok.vpBox);
+      valStr += ` ${isoTok.text}`;
+    }
+
+    // Check if base is tightly enclosed in a theoretical exact dimension box [50]
+    const exactRect = !hasStacked && /^\d+(?:\.\d+)?$/.test(valStr) && vec.rects.find(r =>
+      r.w >= 14 && r.w <= 48 && r.h >= 10 && r.h <= 26 &&
+      base.cx >= r.x0 + 1 && base.cx <= r.x1 - 1 && base.cy >= r.y0 + 1 && base.cy <= r.y1 - 1
+    );
 
     if (devs.length >= 2) {
       hasStacked = true;
@@ -1116,8 +1175,10 @@ async function parseMainDrawing(tokens, vec, canvas, W, H, pageNo, ocrDigitsRunn
     }
 
     base.used = true;
+    if (exactRect) curBox = unionBox(curBox, [exactRect.x0, exactRect.y0, exactRect.x1, exactRect.y1]);
     markStrokesInBox(vec.strokes, curBox, 1);
     const it = makeItem(valStr, curBox, W, H, pageNo, 'PDF', outItems.length + 1);
+    if (exactRect) it.boxedExact = true;
     outItems.push(it);
     if (it.category === '尺寸与公差') pairTargets.push(it);
   }
@@ -1280,9 +1341,22 @@ function tileStarts(size, max, overlap = 650) {
   return Array.from({ length: steps + 1 }, (_, i) => Math.round((size - max) * i / steps));
 }
 
+function inferSheetSize(vpW, vpH) {
+  if (!vpW || !vpH) return '未知';
+  const mmW = Math.max(vpW, vpH) * 25.4 / 72, mmH = Math.min(vpW, vpH) * 25.4 / 72;
+  const stds = [['A0', 1189, 841], ['A1', 841, 594], ['A2', 594, 420], ['A3', 420, 297], ['A4', 297, 210]];
+  let best = '自定义', bestErr = Infinity;
+  for (const [name, w, h] of stds) {
+    const err = Math.hypot(mmW - w, mmH - h);
+    if (err < bestErr) { bestErr = err; best = name; }
+  }
+  return bestErr <= 65 ? best : `${Math.round(mmW)}×${Math.round(mmH)}mm`;
+}
+
 export async function extract({ pdf, img, pages, progress }) {
   const results = [];
-  let ocrState = null, ocrError = null;
+  const preflightPages = [];
+  let ocrState = null, ocrError = null, ocrCallCount = 0;
 
   const ensureOCR = async () => {
     if (ocrError) throw ocrError;
@@ -1319,6 +1393,7 @@ export async function extract({ pdf, img, pages, progress }) {
 
           const ocrTextCrop = async (vpBox, psm = 6) => {
             try {
+              ocrCallCount++;
               const { worker } = await ensureOCR();
               await worker.setParameters({ tessedit_pageseg_mode: String(psm), tessedit_char_whitelist: '', preserve_interword_spaces: '1' });
               const { canvas: c } = cropFromCanvas(canvas, vpBox, W, H, { pad: 16 });
@@ -1330,6 +1405,7 @@ export async function extract({ pdf, img, pages, progress }) {
 
           const ocrLinesCrop = async (vpBox, masks = [], psm = 6) => {
             try {
+              ocrCallCount++;
               const { worker } = await ensureOCR();
               await worker.setParameters({ tessedit_pageseg_mode: String(psm), tessedit_char_whitelist: '', preserve_interword_spaces: '1' });
               const { canvas: c, sx, sy, pad, scaleX, scaleY } = cropFromCanvas(canvas, vpBox, W, H, { pad: 18, masks });
@@ -1352,6 +1428,7 @@ export async function extract({ pdf, img, pages, progress }) {
 
           const ocrDigitsCrop = async (vpBox, rotate = 0) => {
             try {
+              ocrCallCount++;
               const { worker } = await ensureOCR();
               await worker.setParameters({ tessedit_pageseg_mode: '7', tessedit_char_whitelist: '0123456789.', preserve_interword_spaces: '0' });
               const { canvas: c } = cropFromCanvas(canvas, vpBox, W, H, { rotate, pad: 18 });
@@ -1372,6 +1449,16 @@ export async function extract({ pdf, img, pages, progress }) {
           pairBalloons(balloons, pairTargets, W, H, n, pageItems);
 
           for (const it of pageItems) delete it._vp;
+          const pageOcrItems = pageItems.filter(i => i.source === 'OCR').length;
+          preflightPages.push({
+            page: n,
+            mode: pageOcrItems > 0 ? 'CAD矢量+局部转曲混合PDF' : 'CAD原生矢量PDF',
+            inferredSheet: inferSheetSize(W, H),
+            textTokens: tokens.length,
+            vectorPrimitives: vec.hLines.length + vec.vLines.length + vec.rects.length + vec.circles.length + vec.strokes.length,
+            ocrCalls: ocrCallCount,
+            coverageComplete: !ocrError
+          });
           results.push(...pageItems);
           canvas.width = canvas.height = 0;
           continue;
@@ -1379,6 +1466,15 @@ export async function extract({ pdf, img, pages, progress }) {
       }
 
       // Fallback full-page tiled OCR for raster images or scanned PDFs with no vector text layer
+      preflightPages.push({
+        page: n,
+        mode: page ? '无文字层扫描/转曲PDF（切片OCR）' : '栅格图纸图像（切片OCR）',
+        inferredSheet: vp ? inferSheetSize(vp.width, vp.height) : `${canvas.width}×${canvas.height}px`,
+        textTokens: 0,
+        vectorPrimitives: 0,
+        ocrCalls: 1,
+        coverageComplete: false
+      });
       try {
         const { worker, PSM } = await ensureOCR();
         await worker.setParameters({ tessedit_pageseg_mode: PSM.SPARSE_TEXT, tessedit_char_whitelist: '', preserve_interword_spaces: '1' });
@@ -1422,5 +1518,14 @@ export async function extract({ pdf, img, pages, progress }) {
     if (ocrState?.worker) await ocrState.worker.terminate();
   }
   if (ocrError && !results.length) throw Error('OCR 未完成：' + (ocrError.message || ocrError));
-  return { items: results, warning: ocrError ? 'OCR 未完整完成，已保留可读取内容，可重试识别。' : '' };
+  return {
+    items: results,
+    warning: ocrError ? 'OCR 未完整完成，已保留可读取内容，可重试识别。' : '',
+    preflight: {
+      pages: preflightPages,
+      primaryMode: preflightPages[0]?.mode || '未知',
+      inferredSheet: preflightPages[0]?.inferredSheet || '未知',
+      coverageComplete: preflightPages.length > 0 && preflightPages.every(p => p.coverageComplete) && !ocrError
+    }
+  };
 }

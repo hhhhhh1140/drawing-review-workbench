@@ -1,29 +1,34 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#182425"><title>图析 · 工程图纸识别与评测工作台</title><meta name="description" content="在浏览器中解析工程图纸矢量图元与靶向OCR，定位原图标注，可视化内生质检指标，逐项校核并导出结构化结果。"><link rel="icon" href="mark.svg"><link rel="stylesheet" href="style.css?v=20261124c"></head>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#182425"><title>图析 · 工程图纸识别、智能审核与评测工作台</title><meta name="description" content="纯浏览器端 CAD 工程图纸结构化提取、五层 EDM 工程事实恢复、国标公差查表、智能设计评审、轴孔配合计算与跨版本复审工作台。"><link rel="icon" href="mark.svg"><link rel="stylesheet" href="style.css?v=20261126a"></head>
 <body>
 <header class="top">
   <div class="brand"><img src="mark.svg" width="32" height="32" alt=""><strong>图析</strong></div>
   <span class="divider"></span>
-  <span class="workspace">工程图纸识别与评测工作台</span>
+  <span class="workspace">工程图纸识别 · 智能设计评审工作台</span>
   <div class="grow"></div>
-  <a href="#insights" class="toplink"><i data-icon="chart"></i>解析逻辑与评测看板</a>
-  <span class="private"><i data-icon="shield"></i>纯本地解析</span>
-  <button id="export" class="topbtn"><i data-icon="download"></i>导出结果与统计</button>
+  <a href="#reviewStudio" class="toplink"><i data-icon="audit"></i>EDM · 配合计算 · 版本复审</a>
+  <a href="#insights" class="toplink"><i data-icon="chart"></i>解析架构与评测</a>
+  <span class="private"><i data-icon="shield"></i>纯本地执行</span>
+  <button id="export" class="topbtn"><i data-icon="download"></i>导出提取与评审报告</button>
 </header>
 <main>
   <section class="intro">
     <div>
-      <h1>图纸结构化识别与校核</h1>
-      <p>融合 PDF 矢量图元拓扑、形位公差几何解码与靶向局部 OCR，对照原图逐项核验尺寸、公差、图栏与技术要求。</p>
+      <h1>工程图纸结构化提取与智能设计审核</h1>
+      <p>在六阶段 CAD 矢量提取基础上，恢复五层 EDM 工程事实，自动执行国标制图/GD&amp;T/公差查表规则、轴孔配合计算与跨版本复审。</p>
     </div>
     <div class="actions">
       <div class="samples" role="group" aria-label="内置演示样图">
-        <button class="samplebtn active" data-sample="flange" title="切换至复杂工程样图（含形位公差、气泡号、变更栏与技术要求）">综合样图 · 法兰座</button>
-        <button class="samplebtn" data-sample="plate" title="切换至基础英文样图">基础样图 · 安装板</button>
+        <button class="samplebtn active" data-sample="flange" title="复杂壳体样图（含形位公差、双行偏差、气泡与技术要求）">法兰座</button>
+        <button class="samplebtn" data-sample="shaftV1" title="电机轴 V1（含 ⌀12 h6、Ra 3.2 轴承位、圆跳动与基准）">电机轴 V1</button>
+        <button class="samplebtn" data-sample="shaftV2" title="电机轴 V2 改版（Ra 改为 0.8，轴颈改为 ⌀13 h6 触发配合干涉）">电机轴 V2</button>
+        <button class="samplebtn" data-sample="bore" title="配合端盖轴承孔（⌀12 H7，与电机轴构成轴孔配合闭环）">配合孔座</button>
+        <button class="samplebtn" data-sample="plate" title="基础安装板示例">安装板</button>
       </div>
       <input id="file" type="file" accept=".pdf,.png,.jpg,.jpeg,.webp,.bmp" hidden>
       <button id="upload" class="btn"><i data-icon="upload"></i>上传图纸</button>
-      <button id="recognize" class="btn primary"><i data-icon="scan"></i>AI 识别</button>
+      <button id="recognize" class="btn"><i data-icon="scan"></i>AI 识别</button>
+      <button id="runAuditBtn" class="btn primary"><i data-icon="audit"></i>智能审核</button>
     </div>
   </section>
 
@@ -32,11 +37,12 @@
       <div class="filebar">
         <span class="fileicon"><i data-icon="file"></i></span>
         <div class="filemeta"><b id="filename">正在载入图纸…</b><small id="fileinfo"></small></div>
+        <span id="preflightBadge" class="pfbadge" title="PDF 接入预检类型与图幅推断"></span>
         <a id="samplePdfLink" class="pdfdl" href="sample/flange-housing.pdf" download title="下载当前样图原始 PDF">下载样图 PDF</a>
         <button class="iconbtn" id="expand" title="放大预览" aria-label="放大预览"><i data-icon="expand"></i></button>
       </div>
       <div class="canvaswrap">
-        <div class="viewtag"><span class="live"></span>图纸矢量预览与定位</div>
+        <div class="viewtag"><span class="live"></span><span id="viewModeLabel">图纸矢量预览与证据定位</span></div>
         <div id="viewport" tabindex="0" aria-label="图纸预览，可缩放并拖动"><div id="sheet"><img id="paper" alt="工程图纸原图" draggable="false"><div id="overlay"></div></div></div>
         <div id="drawhint" hidden>在图纸上拖动，框选标注位置 <button id="cancelBox">取消</button></div>
         <div class="tools"><button id="less" aria-label="缩小" title="缩小"><i data-icon="minus"></i></button><span id="zoom">100%</span><button id="more" aria-label="放大" title="放大"><i data-icon="plus"></i></button><em></em><button id="fit" aria-label="适应窗口" title="适应窗口"><i data-icon="fit"></i></button></div>
@@ -48,16 +54,123 @@
     </section>
 
     <section class="panel results">
-      <div class="rhead"><span class="headicon"><i data-icon="list"></i></span><h2>提取结果</h2><span class="count" id="count">0</span><button id="add" class="textbtn"><i data-icon="plus"></i>补录</button></div>
+      <div class="rhead modebar">
+        <div class="modeswitch" role="tablist" aria-label="右侧工作台模式">
+          <button id="modeExtract" class="modebtn active" role="tab" aria-selected="true"><i data-icon="list"></i>提取校核 <span class="count" id="count">0</span></button>
+          <button id="modeReview" class="modebtn" role="tab" aria-selected="false"><i data-icon="audit"></i>智能审核 <span class="count alertcount" id="auditAlertCount">0</span></button>
+        </div>
+        <button id="add" class="textbtn"><i data-icon="plus"></i>补录</button>
+      </div>
       <div id="progress" role="status" hidden><span id="progressText"></span><progress max="100" value="0"></progress></div>
-      <div class="tabs" role="group" aria-label="结果状态"><button data-filter="all" class="active">全部</button><button data-filter="pending">待复核 <span id="pending">0</span></button><button data-filter="done">已确认 <span id="done">0</span></button></div>
-      <div id="miniViz" class="miniviz" aria-label="提取分布与内生质检概览"></div>
-      <label class="search"><i data-icon="search"></i><input id="search" type="search" placeholder="搜索字段、气泡号【N】或识别内容" aria-label="搜索字段或识别内容"></label>
-      <div id="list"></div>
-      <div id="editor" hidden></div>
-      <footer class="rfoot"><i data-icon="target"></i><span id="footmsg">点击任一提取项，自动缩放定位到原图对应位置</span></footer>
+
+      <!-- Pane 1: Original Extraction & Verification List -->
+      <div id="extractPane" class="rpane">
+        <div class="tabs" role="group" aria-label="结果状态"><button data-filter="all" class="active">全部</button><button data-filter="pending">待复核 <span id="pending">0</span></button><button data-filter="done">已确认 <span id="done">0</span></button></div>
+        <div id="miniViz" class="miniviz" aria-label="提取分布与内生质检概览"></div>
+        <label class="search"><i data-icon="search"></i><input id="search" type="search" placeholder="搜索字段、气泡号【N】或识别内容" aria-label="搜索字段或识别内容"></label>
+        <div id="list"></div>
+        <div id="editor" hidden></div>
+      </div>
+
+      <!-- Pane 2: Engineering Design Review Rules & Findings -->
+      <div id="reviewPane" class="rpane" hidden>
+        <div id="reviewSummaryBar" class="revsum"></div>
+        <div class="tabs revtabs" role="group" aria-label="审核结论筛选">
+          <button data-rfilter="all" class="active">全部规则 <span id="rfAll">0</span></button>
+          <button data-rfilter="issues">问题/风险 <span id="rfIssues">0</span></button>
+          <button data-rfilter="unknown">待确认 <span id="rfUnknown">0</span></button>
+          <button data-rfilter="pass">已通过 <span id="rfPass">0</span></button>
+        </div>
+        <div id="reviewList" class="revlist"></div>
+      </div>
+
+      <footer class="rfoot"><i data-icon="target"></i><span id="footmsg">点击任一提取项或审核结论，自动缩放定位到原图证据位置</span></footer>
     </section>
   </div>
+
+  <!-- Engineering Review Studio: EDM Semantic Model + Shaft-Hole Fit + Cross-Version Semantic Diff + Rule Catalog -->
+  <section id="reviewStudio" class="showcase" aria-label="工程语义模型、轴孔配合计算、跨版本复审与规范规则库">
+    <div class="showhead">
+      <div>
+        <span class="eyebrow">ENGINEERING DESIGN REVIEW STUDIO · EDM &amp; RULE ENGINE</span>
+        <h2>五层 EDM 工程事实 · 轴孔配合计算 · 跨版本复审 · 审核规则台账</h2>
+      </div>
+      <p>遵循「规则反向驱动 + 确定性数值计算 + 未知不误报（UNKNOWN ≠ PASS）+ 原图证据可追溯」构建的研发设计预审闭环。</p>
+    </div>
+
+    <div class="bento">
+      <!-- Card 1: 5-Layer EDM Semantic Package -->
+      <article class="card">
+        <div class="cardhead">
+          <div>
+            <span class="badge livebadge">五层工程事实模型 (EDM)</span>
+            <h3>当前图纸结构化工程语义恢复</h3>
+          </div>
+          <small id="edmPartTag"></small>
+        </div>
+        <div id="edmPanel" class="edmpanel"></div>
+      </article>
+
+      <!-- Card 2: Cross-Drawing Shaft-Hole Fit Engineering Calculator -->
+      <article class="card">
+        <div class="cardhead">
+          <div>
+            <span class="badge accentbadge">跨图关联工程计算 · GB/T 1800.2</span>
+            <h3>电机轴 × 配合孔极限间隙/过盈校核</h3>
+          </div>
+          <div class="presetfits">
+            <button class="tinybtn" id="fitPresetV1" title="加载电机轴 V1 (⌀12 h6) 与端盖孔 (⌀12 H7)">案例：V1 合格配合</button>
+            <button class="tinybtn warn" id="fitPresetV2" title="加载电机轴 V2 (⌀13 h6) 与未更新端盖孔 (⌀12 H7)">案例：V2 改轴干涉</button>
+          </div>
+        </div>
+        <div class="fitform">
+          <label>轴外径特征（当前图或样图）<select id="fitShaftSel"></select></label>
+          <label>配合孔内径特征（关联图或样图）<select id="fitHoleSel"></select></label>
+          <label>目标最小间隙 (mm)<input id="fitMinInput" type="number" step="0.001" value="0.000"></label>
+          <label>目标最大间隙 (mm)<input id="fitMaxInput" type="number" step="0.001" value="0.030"></label>
+        </div>
+        <div id="fitResultBox" class="fitresult"></div>
+      </article>
+
+      <!-- Card 3: Cross-Version Semantic Diff & Impacted Rule Re-review -->
+      <article class="card widecard">
+        <div class="cardhead">
+          <div>
+            <span class="badge darkbadge">SEMANTIC DIFF &amp; RE-REVIEW</span>
+            <h3>同图号跨版本语义对比与受影响规则复审</h3>
+          </div>
+          <div class="diffcontrols">
+            <label>基准旧版 (V1) <select id="diffV1Sel">
+              <option value="shaftV1" selected>驱动电机轴 · V1 (MS108-V1)</option>
+              <option value="current">当前打开图纸</option>
+              <option value="flange">法兰轴承座 (DW30204)</option>
+            </select></label>
+            <span class="diffarrow">→</span>
+            <label>复审新版 (V2) <select id="diffV2Sel">
+              <option value="shaftV2" selected>驱动电机轴 · V2 (MS108-V2)</option>
+              <option value="current">当前打开图纸</option>
+              <option value="flange">法兰轴承座 (DW30204)</option>
+            </select></label>
+            <input id="diffUploadInput" type="file" accept=".pdf,.json" hidden>
+            <button class="tinybtn" id="diffUploadBtn" title="上传另一版本 PDF 或导出 JSON 与当前图纸对比">上传对比版本</button>
+          </div>
+        </div>
+        <div id="diffPanel" class="diffpanel"></div>
+      </article>
+
+      <!-- Card 4: Standards Index & Executable Rule Ledger -->
+      <article class="card widecard">
+        <div class="cardhead">
+          <div>
+            <span class="badge livebadge">STANDARDS &amp; RULE LEDGER</span>
+            <h3>可执行设计审核规则台账与国标规范官方索引</h3>
+          </div>
+          <small>明确区分「国标语法/公差表确定性规则」与「PoC 模拟专业阈值（demo_only）」</small>
+        </div>
+        <div id="ruleCatalogPanel" class="catalogpanel"></div>
+      </article>
+    </div>
+  </section>
 
   <section id="insights" class="showcase" aria-label="解析结果可视化、核心算法逻辑与评测基准">
     <div class="showhead">
@@ -158,14 +271,14 @@
             <p>由横纵线段经并查集还原标题栏真实单元格与变更表行；遮罩已知取值后靶向识别转曲表头，自动配对同格与上下跨格键值。</p>
           </div>
           <div class="stage">
-            <div class="sttop"><span class="stno">04</span><b>7 类形位公差框几何解码</b></div>
+            <div class="sttop"><span class="stno">04</span><b>9 类形位公差框几何解码</b></div>
             <svg viewBox="0 0 180 54" class="stsvg" aria-hidden="true"><rect x="10" y="14" width="32" height="26" fill="#eff6ec" stroke="#3f6a34" stroke-width="1.4"/><circle cx="26" cy="27" r="7" fill="none" stroke="#2d5224" stroke-width="1.3"/><line x1="16" y1="27" x2="36" y2="27" stroke="#2d5224"/><line x1="26" y1="17" x2="26" y2="37" stroke="#2d5224"/><rect x="42" y="14" width="66" height="26" fill="#fff" stroke="#3f6a34" stroke-width="1.4"/><text x="48" y="31" font-size="11" font-weight="600" fill="#1e3122">0.15 Ⓜ</text><rect x="108" y="14" width="28" height="26" fill="#fff" stroke="#3f6a34" stroke-width="1.4"/><text x="117" y="31" font-size="11" fill="#1e3122">A</text><rect x="136" y="14" width="28" height="26" fill="#fff" stroke="#3f6a34" stroke-width="1.4"/><text x="145" y="31" font-size="11" fill="#1e3122">B</text></svg>
-            <p>检测等高毗邻公差框链，从首格同心圆/平行四边形/十字线直接解码 <code>⊥ ▱ ∥ ≡ ○ ◎ ⌖</code>，旋转摆正竖排框并分离 <code>⌀</code> 与 <code>Ⓜ</code>。</p>
+            <p>检测等高毗邻公差框链，从首格几何特征直接解码 <code>⊥ ▱ ∥ ≡ ○ ◎ ⌖ ↗ ⇗</code>，旋转摆正竖排框并分离 <code>⌀</code> 与 <code>Ⓜ</code>。</p>
           </div>
           <div class="stage">
-            <div class="sttop"><span class="stno">05</span><b>矢量符号还原与上下偏差合并</b></div>
+            <div class="sttop"><span class="stno">05</span><b>公差代号、粗糙度与偏差拼装</b></div>
             <svg viewBox="0 0 180 54" class="stsvg" aria-hidden="true"><circle cx="24" cy="29" r="6" fill="none" stroke="#3e6b35" stroke-width="1.4"/><line x1="17" y1="36" x2="31" y2="22" stroke="#3e6b35" stroke-width="1.4"/><text x="35" y="34" font-size="15" font-weight="700" fill="#202b2b">35.0</text><line x1="76" y1="20" x2="83" y2="20" stroke="#c44d34" stroke-width="2"/><text x="86" y="24" font-size="10.5" fill="#202b2b">0.02</text><line x1="76" y1="35" x2="83" y2="35" stroke="#c44d34" stroke-width="2"/><text x="86" y="39" font-size="10.5" fill="#202b2b">0.05</text><rect x="124" y="15" width="48" height="24" rx="4" fill="#d0ef92"/><text x="130" y="31" font-size="10" font-weight="700" fill="#1f3322">完整合并</text></svg>
-            <p>在局部阅读坐标系中找回被 CAD 画成短线段的负号 <code>−</code>、前置直径符 <code>⌀</code> 与后置转曲对称公差 <code>±</code>，自动拼合上下极限偏差。</p>
+            <p>在局部阅读坐标系中找回负号 <code>−</code>、前置 <code>⌀</code>、ISO 公差带 <code>h6/H7</code>、表面粗糙度 <code>Ra/Rz</code> 与双行上下极限偏差。</p>
           </div>
           <div class="stage">
             <div class="sttop"><span class="stno">06</span><b>转曲段落连通聚类 &amp; 气泡号绑定</b></div>
@@ -178,5 +291,5 @@
   </section>
 </main>
 <div id="toast" role="status"></div>
-<script type="module" src="app.js?v=20261124c"></script>
+<script type="module" src="app.js?v=20261126a"></script>
 </body></html>
