@@ -451,7 +451,7 @@ for (let i = 0; i < rawArgs.length; i++) {
   else if (rawArgs[i] === '--role' && rawArgs[i + 1]) { defaultRole = rawArgs[++i]; }
   else if (rawArgs[i] === '--mate' && rawArgs[i + 1]) { matePath = rawArgs[++i]; }
   else if (rawArgs[i] === '--diff-from' && rawArgs[i + 1]) { diffFromPath = rawArgs[++i]; }
-  else if (rawArgs[i] === '--review') { /* enabled automatically */ }
+  else if (rawArgs[i] === '--review' || rawArgs[i] === '--verbose') { /* flags */ }
   else posArgs.push(rawArgs[i]);
 }
 

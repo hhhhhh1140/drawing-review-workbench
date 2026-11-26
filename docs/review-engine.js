@@ -411,16 +411,21 @@ export function parseGDTSpec(item) {
     '↗': { name: '圆跳动', cls: 'runout' },
     '⇗': { name: '全跳动', cls: 'runout' }
   };
-  const parts = m[2].split(/\||，(?:公共)?基准\s*/).map(s => s.trim()).filter(Boolean);
+  // Strip trailing Chinese measurement notes (e.g. "，在L2处测量", "，同轴度,在L3和L4测量") before parsing datum letters
+  const coreBody = m[2].replace(/[，,]\s*(?:在\s*L|同轴度|测量|局部|全长).*$/i, '').trim();
+  const parts = coreBody.split(/\||，(?:公共)?基准\s*/).map(s => s.trim()).filter(Boolean);
   const tolSeg = parts[0] || '';
   const zoneDiameter = /[ØΦφ⌀]/.test(tolSeg);
-  const modifier = /Ⓜ/.test(tolSeg) ? 'M' : (/Ⓛ/.test(tolSeg) ? 'L' : '');
+  const modifier = /Ⓜ|\bM\b/.test(tolSeg) ? 'M' : (/Ⓛ/.test(tolSeg) ? 'L' : '');
   const vm = tolSeg.match(/(\d+(?:\.\d+)?)/);
   const value = vm ? +vm[1] : null;
   const datums = [];
   for (const seg of parts.slice(1)) {
-    for (const dm of seg.matchAll(/[A-Z]/g)) {
-      if (!datums.includes(dm[0])) datums.push(dm[0]);
+    // Only extract standalone uppercase datum letters (A-Z, excluding measurement zone codes like L2/L3)
+    const cleanSeg = seg.replace(/\bL\d+(?:-[A-Z])?\b/g, '');
+    for (const dm of cleanSeg.matchAll(/\b([A-Z])\b|([A-Z])(?=-)|(?<=-)([A-Z])/g)) {
+      const ch = dm[1] || dm[2] || dm[3];
+      if (ch && !datums.includes(ch)) datums.push(ch);
     }
   }
   return {
@@ -488,8 +493,10 @@ export function buildEDM(doc, preflight = null, roleOverrides = {}) {
     materialItem: findBasicItem(/材料|材质|MATERIAL/i),
     scale: findBasic(/比例|SCALE/i),
     scaleItem: findBasicItem(/比例|SCALE/i),
-    revision: findBasic(/版本|REVISION|REV/i),
-    revisionItem: findBasicItem(/版本|REVISION|REV/i),
+    revision: findBasic(/2D\s*版本|^版本$|REVISION|2D\s*REV/i) || findBasic(/版本|REV/i),
+    revisionItem: findBasicItem(/2D\s*版本|^版本$|REVISION|2D\s*REV/i) || findBasicItem(/版本|REV/i),
+    rev3D: findBasic(/3D\s*版本|3D\s*REV/i),
+    rev3DItem: findBasicItem(/3D\s*版本|3D\s*REV/i),
     titleGenTol: findBasic(/未注.*公差|无指示.*公差|一般公差|GENERAL\s*TOL/i),
     titleGenTolItem: findBasicItem(/未注.*公差|无指示.*公差|一般公差|GENERAL\s*TOL/i),
     placeholderItems: basic.filter(b => /#[A-Za-z0-9_]+#|待定|TBD|\?\?\?/i.test(b.value)),
@@ -531,7 +538,8 @@ export function buildEDM(doc, preflight = null, roleOverrides = {}) {
   const allNotesText = noteItems.map(n => n.value).join(' ； ');
   let generalTolerance = null;
   const gbt1804 = (allNotesText + ' ' + metadata.titleGenTol).match(/(?:GB\/?T\s*1804|ISO\s*2768)\s*[-—:：]?\s*([fmcvFMCV])(?:\s*([HKL]))?/);
-  const explicitGenPm = allNotesText.match(/未注(?:线性)?尺寸(?:公差|允许差)?[^±\d]{0,8}±\s*(\d+(?:\.\d+)?)\s*(?:mm)?/) ||
+  const explicitGenPm = allNotesText.match(/(?:未注|无指示|一般)[^。；\n]{0,20}(?:公差|允许差)[^±\d。；\n]{0,14}±\s*(\d+(?:\.\d+)?)\s*(?:mm)?/) ||
+    allNotesText.match(/尺寸(?:公差|允许差)[^±\d。；\n]{0,12}±\s*(\d+(?:\.\d+)?)\s*(?:mm)?/) ||
     metadata.titleGenTol.match(/±\s*(\d+(?:\.\d+)?)/);
   if (gbt1804) {
     generalTolerance = { type: 'standard', standard: gbt1804[0].toUpperCase().includes('ISO') ? 'ISO 2768' : 'GB/T 1804', grade: gbt1804[1].toLowerCase(), geomGrade: gbt1804[2] || null };
@@ -655,11 +663,13 @@ export function runDesignReview(edm, { exceptions = {} } = {}) {
 
   const pushIssue = ({
     ruleId, title, dimension, priority = 'P0', standardCode, status,
-    actualValue, requiredValue, risk, suggestion, evidenceItem = null,
+    actualValue, requiredValue, risk, suggestion, evidenceItem = null, evidenceItems = null,
     confirmTarget = null
   }) => {
     const finalStatus = exceptions[ruleId] ? 'APPROVED_EXCEPTION' : status;
     const std = STANDARDS_INDEX[standardCode] || STANDARDS_INDEX['DEMO-SPEC-001'];
+    const evList = (evidenceItems && evidenceItems.length ? evidenceItems : (evidenceItem ? [evidenceItem] : [])).filter(Boolean);
+    const primaryEv = evidenceItem || evList[0] || null;
     results.push({
       id: `${ruleId}-${results.length + 1}`,
       ruleId,
@@ -672,10 +682,11 @@ export function runDesignReview(edm, { exceptions = {} } = {}) {
       requiredValue,
       risk,
       suggestion: finalStatus === 'APPROVED_EXCEPTION' ? `已按批准偏离放行（备注：${exceptions[ruleId]}）` : suggestion,
-      page: evidenceItem?.page || 1,
-      box: evidenceItem?.box || null,
-      evidenceId: evidenceItem?.id || null,
-      evidenceLabel: evidenceItem ? `${evidenceItem.label}: ${evidenceItem.value}` : '全图范围核查',
+      page: primaryEv?.page || 1,
+      box: primaryEv?.box || null,
+      evidenceId: primaryEv?.id || null,
+      evidenceLabel: primaryEv ? `${primaryEv.label}: ${primaryEv.value}` : '全图范围核查',
+      evidenceItems: evList.map(it => ({ id: it.id, label: it.label, value: it.value, page: it.page, box: it.box })),
       confirmTarget
     });
   };
@@ -725,8 +736,27 @@ export function runDesignReview(edm, { exceptions = {} } = {}) {
     requiredValue: '正式受控图样不得残留 #SH#/#PZ#/TBD 等模板占位符，须具备完整审签责任人及第一角/第三角投影声明',
     risk: hasPlaceholders ? '审批栏残留模板宏占位符说明图纸未经正式校审流程直接导出，违反受控文件放行要求' : '缺少投影视角声明在外协加工时易导致镜像报废',
     suggestion: hasPlaceholders ? `请在 PDM/CAD 图栏属性中完成审核/批准电子签章，清除 ${meta.placeholderItems.map(p => p.value).join('/')} 占位符` : ((hasSign && hasProjOrSheet) ? '无需整改' : '建议补全制图/审核/批准签署及视角投影符号声明'),
-    evidenceItem: meta.placeholderItems[0] || meta.scaleItem || meta.drawingNoItem
+    evidenceItem: meta.placeholderItems[0] || meta.scaleItem || meta.drawingNoItem,
+    evidenceItems: meta.placeholderItems.length ? meta.placeholderItems : [meta.scaleItem || meta.drawingNoItem]
   });
+
+  // R-DOC-04: 2D vs 3D revision sync check (if both exist in title block)
+  if (meta.rev3D && meta.revision && meta.rev3D.replace(/^V/i, '') !== meta.revision.replace(/^V/i, '')) {
+    pushIssue({
+      ruleId: 'R-DOC-04',
+      title: '标题栏 2D 图纸版本与 3D 数模版本同步核查',
+      dimension: '跨文档及版本',
+      priority: 'P1',
+      standardCode: 'GB/T 10609.1-2008',
+      status: 'WARNING',
+      actualValue: `2D 图纸版本为 ${meta.revision}，但标题栏关联 3D 数模版本仍为 ${meta.rev3D}`,
+      requiredValue: '涉及几何结构或配合尺寸修改时，2D 工程图与 3D 数模版本宜保持同步并在 PDM 中建立明确映射',
+      risk: '若仅修改 2D 图纸尺寸而未同步更新 3D 数模，模具 CNC 编程/CAM 加工与装配干涉检查将沿用旧数模导致零件报废',
+      suggestion: `请核实本次 2D 升版（${meta.revision}）是否涉及 3D 几何变动；若涉及请同步升版 3D 数模并更新图栏 3D 版本号`,
+      evidenceItem: meta.rev3DItem,
+      evidenceItems: [meta.revisionItem, meta.rev3DItem]
+    });
+  }
 
   // R-DOC-03: Revision table vs current Title Block cross-validation
   if (meta.revisions.length > 0) {
@@ -1385,4 +1415,51 @@ export function runVersionDiffReview(edmV1, reviewV1, edmV2, reviewV2, fitCheckV
     resolvedIssues,
     regressedIssues
   };
+}
+
+// 7. Export Human-Readable Markdown Audit Report for Current Drawing
+export function exportReviewMarkdown(edm, review) {
+  const m = edm.L2_Specifications.metadata;
+  const c = review.counts;
+  const gateText = {
+    REJECT_NEEDS_FIX: '🔴 存在阻断性问题（FAIL），建议整改后再签审',
+    PENDING_ENGINEER_REVIEW: '🟠 存在风险提示或待确认项，需工程师复核确认',
+    READY_FOR_SIGN_OFF: '🟢 常规自动化规则全部通过'
+  }[review.overallGate] || review.overallGate;
+
+  const lines = [
+    `# CAD 工程图纸智能审核问题报告`,
+    ``,
+    `- **图纸文件**：${m.docName || '未命名图纸'}`,
+    `- **零件信息**：${m.partName || '未标'} ｜ 图号：${m.drawingNo || m.partCode || '未标'} ｜ 材料：${m.material || '未标'} ｜ 版本：${m.revision || '未标'}`,
+    `- **解析预检**：${edm.L1_Observation.primaryMode} ｜ 推断图幅：${m.sheetSize || '未知'} ｜ 提取条目：${edm.L1_Observation.totalItems} 项 ｜ 零件类型：${edm.L5_Context.partFamilyLabel}`,
+    `- **综合门禁结论**：${gateText}`,
+    `- **审核统计**：不通过 (FAIL) **${c.FAIL}** 项 ｜ 风险提示 (WARNING) **${c.WARNING}** 项 ｜ 待人工确认 (UNKNOWN) **${c.UNKNOWN}** 项 ｜ 通过 (PASS) **${c.PASS}** 项 ｜ 自动化规则覆盖率 **${review.autoCoveragePct}%**`,
+    ``
+  ];
+
+  const sections = [
+    ['一、必改问题（不通过 · FAIL）', review.results.filter(r => r.status === 'FAIL')],
+    ['二、风险提示与工艺预警（WARNING）', review.results.filter(r => r.status === 'WARNING')],
+    ['三、信息缺失与待人工确认项（UNKNOWN）', review.results.filter(r => r.status === 'UNKNOWN')],
+    ['四、例外放行项（APPROVED_EXCEPTION）', review.results.filter(r => r.status === 'APPROVED_EXCEPTION')],
+    ['五、已通过的规范审核项（PASS）', review.results.filter(r => r.status === 'PASS')]
+  ];
+
+  for (const [heading, list] of sections) {
+    if (!list.length) continue;
+    lines.push(`## ${heading}（${list.length} 项）`, ``);
+    for (const [idx, r] of list.entries()) {
+      lines.push(`### ${idx + 1}. [${r.ruleId}] ${r.title}`);
+      lines.push(`- **审核维度**：${r.dimension} ｜ **依据规范**：${r.standard.code}（${r.standard.title}）`);
+      lines.push(`- **实际设计值**：${r.actualValue}`);
+      lines.push(`- **规范/规则要求**：${r.requiredValue}`);
+      if (r.status !== 'PASS') {
+        lines.push(`- **潜在工程风险**：${r.risk}`);
+        lines.push(`- **整改建议**：${r.suggestion}`);
+      }
+      lines.push(``);
+    }
+  }
+  return lines.join('\n');
 }
